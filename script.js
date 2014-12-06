@@ -4,7 +4,9 @@ function sketchProc(processing) {
 var PRINT = '';
 var WIDTH = 1200;
 var HEIGHT = 600;
-var G = 1; //gravitational constant
+var G = 1500; //gravitational constant
+var DRAGGING = false;
+var pressPoint;
 processing.size(WIDTH,HEIGHT);
 document.getElementById('canvas1').style.width = WIDTH;
 document.getElementById('canvas1').style.height = HEIGHT;
@@ -22,16 +24,16 @@ Star.prototype.display = function () {
 	processing.ellipse(this.position.x,this.position.y,this.radius*2,this.radius*2);
 };
 
-var Comet = function (x,y) {
+var Comet = function (x,y,velx,vely) {
 	this.position = new processing.PVector(x,y);
-	this.velocity = new processing.PVector(0,0);
+	this.velocity = new processing.PVector(velx,vely);
 	this.acceleration = new processing.PVector(0,0);
 	this.radius = 3;
 	this.mass = 1;
+	this.tail = new Tail();
 };
 
 Comet.prototype.run = function (star) {
-	document.getElementById('debugField').innerHTML = this.position.x;
 	var gravity = this.calculateAttraction(star);
 	this.applyForce(gravity);
 	this.update();
@@ -39,8 +41,9 @@ Comet.prototype.run = function (star) {
 };
 
 Comet.prototype.calculateAttraction = function (object) {
-	var force = PVector.sub(this.position,object.position);
+	var force = PVector.sub(object.position,this.position);
 	var distance = force.mag();
+	if (distance < 10) {distance = 10}
 	force.normalize();
 	var strength = (G * this.mass * object.mass) / (distance * distance);
 	force.mult(strength);
@@ -56,12 +59,49 @@ Comet.prototype.update = function () {
 	this.velocity.add(this.acceleration);
 	this.position.add(this.velocity);
 	this.acceleration.mult(0);
+	processing.fill(255,255,255);
+	this.tail.addDust(this.position.x,this.position.y);
 };
 
 Comet.prototype.display = function () {
 	processing.noStroke();
 	processing.fill(255,255,255);
 	processing.ellipse(this.position.x,this.position.y,this.radius*2,this.radius*2);
+};
+
+var Tail = function () {
+	this.tailArray = [];
+};
+
+Tail.prototype.addDust = function (x,y) {
+	this.tailArray.push(new Dust(x,y));
+};
+
+Tail.prototype.update = function () {
+	for (var i=0; i<this.tailArray.length;i++) {
+		this.tailArray[i].update();
+	}
+};
+
+var Dust = function (x,y) {
+	this.position = new processing.PVector(x,y);
+	this.color = processing.color(220,220,220);
+	this.opacity = 100;
+	this.radius = 2;
+};
+
+Dust.prototype.update = function () {
+	//this.opacity = 0;
+	processing.noStroke();
+	processing.fill(this.color,this.opacity);
+	processing.ellipse(this.position.x,this.position.y,this.radius*2,this.radius*2);
+};
+
+var createComet = function () {
+	var currentPoint = new processing.PVector(processing.mouseX,processing.mouseY);
+	var velocity = PVector.sub(pressPoint,currentPoint);
+	velocity.div(40);
+	comets.push(new Comet(processing.mouseX,processing.mouseY,velocity.x,velocity.y));
 };
 
 var star = new Star();
@@ -75,12 +115,14 @@ processing.draw = function () {
 	star.display();
 };
 
-processing.mouseClicked = function () {
-	comets.push(new Comet(processing.mouseX,processing.mouseY));
+processing.mousePressed = function () {
+	pressPoint = new processing.PVector(processing.mouseX,processing.mouseY);
 };
 
+processing.mouseReleased = function () {
+	createComet();
+};
 
-PRINT += ' --reached the end of the script.';
 document.getElementById('debugField').innerHTML = PRINT;
 }
 var canvas = document.getElementById("canvas1");
