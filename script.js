@@ -5,13 +5,12 @@ var HEIGHT = 600;
 processing.size(WIDTH,HEIGHT);
 document.getElementById('canvas1').style.width = WIDTH;
 document.getElementById('canvas1').style.height = HEIGHT;
-var PRINT = '';
+var ARROW = processing.loadImage('arrow.png'); //260x260px
 var G = 1000; //gravitational constant
 var DRAGGING = false;
 var PRESSPOINT;
 var STARS,COMETS;
-
-document.getElementById('debugField').innerHTML = '';
+var VAPORIZING = false; //is comet vaporizing when it gets close to a star?
 
 var Particle = function () {
 	this.position = new processing.PVector(0,0);
@@ -56,11 +55,6 @@ Particle.prototype.calculateAttraction = function (object) {
 	return force;
 };
 
-Particle.prototype.getDistanceToObject = function (object) {
-	var dir = PVector.sub(object.position,this.position);
-	return dir.mag();
-};
-
 var Star = function(x,y,velx,vely,mass) {
     Particle.call(this);
 	this.position = new processing.PVector(x,y);
@@ -85,7 +79,7 @@ Star.prototype.merge = function (star2) {
 	if (this.mass < star2.mass) {
 		return
 	}
-	var distance = this.getDistanceToObject(star2);
+	var distance = calculateDistance(this.position,star2.position);
 	if (distance < this.radius + star2.radius) {
 		this.mass += star2.mass;
 		star2.alive = false;
@@ -147,11 +141,11 @@ Comet.prototype.checkOffScreen = function () {
 };
 
 Comet.prototype.checkInStar = function (star) {
-	return (this.getDistanceToObject(star) < star.radius);
+	return (calculateDistance(this.position,star.position) < star.radius);
 };
 
 Comet.prototype.determineDustOpacity = function (star) {
-	var distance = this.getDistanceToObject(star);
+	var distance = calculateDistance(this.position,star.position);
 	var opacity = 200 * (150 / distance);
 	if (opacity > 200) {opacity = 200}
 	return opacity;
@@ -159,7 +153,7 @@ Comet.prototype.determineDustOpacity = function (star) {
 
  //decreases comet's mass based on its proximity to the star
 Comet.prototype.decreaseMass = function (star) {
-	var distance = this.getDistanceToObject(star);
+	var distance = calculateDistance(this.position,star.position);
 	this.mass -= 2000 / (distance*distance);
 	if (this.mass == 0) {this.mass = -1;}
 };
@@ -168,9 +162,9 @@ Comet.prototype.isAlive = function () {
 	if (!this.alive) {
 		return false;
 	}
-	/*if (this.mass < 0) { //vaporizing turned off
+	if (this.mass < 0 && VAPORIZING) { //vaporizing turned off
 		return false;
-	}*/
+	}
 	return true;
 };
 
@@ -180,7 +174,7 @@ var Tail = function () {
 };
 
 Tail.prototype.addDust = function (x,y,opacity) {
-	for (var i=0;i<12/STARS.length;i++) {
+	for (var i=0;i<10/STARS.length;i++) {
 		this.dustArray.push(new DustParticle(x,y,opacity));
 	}
 };
@@ -208,7 +202,7 @@ DustParticle.prototype = Object.create(Particle.prototype);
 
 DustParticle.prototype.run = function () {
 	this.update();
-	this.opacity -= 3;
+	this.opacity -= 4;
 	this.display();
 };
 
@@ -238,25 +232,50 @@ var createStar = function () {
 	STARS.push(new Star(processing.mouseX,processing.mouseY,velocity.x,velocity.y,1));
 };
 
-var setupAnimation = function () {
-	COMETS = [];
-	var sideVelocitySmall = Math.random()*0.5 + 1;
-	var sideVelocityBig = 6;
-	//one massive and two dwarf stars
-	//STARS = [new Star(WIDTH/2,HEIGHT/2,0,0,8),new Star(WIDTH/2-40,HEIGHT/2-250,sideVelocityBig,-sideVelocitySmall,0.15),new Star(WIDTH/2+30,HEIGHT/2-250,sideVelocityBig,sideVelocitySmall,0.15)];
-	//binary with two same stars
-	STARS = [new Star(WIDTH/2,HEIGHT/2-200,sideVelocitySmall,0,2),new Star(WIDTH/2,HEIGHT/2+200,-sideVelocitySmall,0,2)];
-	//one star
-	//STARS = [new Star(WIDTH/2,HEIGHT/2,0,0,2)];
-	//STARS = [new Star(WIDTH/2-50,HEIGHT/2-250,0,-sideVelocitySmall,0.1),new Star(WIDTH/2+50,HEIGHT/2-250,0,sideVelocitySmall,0.3)];
+var displayArrow = function () {
+	var distance = calculateDistance(PRESSPOINT,new processing.PVector(processing.mouseX,processing.mouseY));
+	if (distance > 150) {distance = 150;} //constraining distance
+	var size = (distance / Math.sqrt(2))*1.1;
+	if (size == 0) {size = 1;} //if size is 0 it automatically displays a full scale image
+	var dx = Math.abs(processing.mouseX - PRESSPOINT.x);
+	var dy = Math.abs(processing.mouseY - PRESSPOINT.y);
+	var angle = Math.tan(dy/dx);
+	document.getElementById("print").innerHTML = dy/dx;
+	angle -= Math.PI/4;
+	processing.pushMatrix();
+	processing.translate(PRESSPOINT.x,PRESSPOINT.y);
+	processing.rotate(angle);
+	processing.image(ARROW,0,0,size,size);
+	processing.popMatrix();
 };
 
-processing.draw = function () {
-	if (RESET) {
-		setupAnimation();
-		RESET = false;
+var calculateDistance = function (position1,position2) {
+	var dir = PVector.sub(position2,position1);
+	return dir.mag();
+};
+
+var setupAnimation = function (scenario) {
+	COMETS = [];
+	switch (scenario) {
+		case "0": //one star in the middle
+			STARS = [new Star(WIDTH/2,HEIGHT/2,0,0,2)];
+			break;
+		case "1": //binary with two same stars
+			var sideVelocitySmall = Math.random()*0.5 + 1;
+			var sideVelocityBig = 6;
+			STARS = [new Star(WIDTH/2,HEIGHT/2-200,sideVelocitySmall,0,2),new Star(WIDTH/2,HEIGHT/2+200,-sideVelocitySmall,0,2)];
+			break;
+		case "2": //one massive and two dwarf stars
+			var sideVelocitySmall = Math.random()*0.5 + 1;
+			var sideVelocityBig = 6;
+			STARS = [new Star(WIDTH/2,HEIGHT/2,0,0,8),new Star(WIDTH/2-40,HEIGHT/2-250,sideVelocityBig,-sideVelocitySmall,0.15),new Star(WIDTH/2+30,HEIGHT/2-250,sideVelocityBig,sideVelocitySmall,0.15)];
+			break;
+		default: //one star in the middle (executed after start)
+			STARS = [new Star(WIDTH/2,HEIGHT/2,0,0,2)];
 	}
-	//document.getElementById('debugField').innerHTML = STARS.length;
+};
+
+var animationMainloop = function () {
 	processing.background(18,24,64);
 	for (var i=0; i<COMETS.length;i++) {
 		for (var j=0; j<STARS.length; j++) {
@@ -281,16 +300,29 @@ processing.draw = function () {
 	}
 };
 
+processing.draw = function () {
+	if (RESET) {
+		setupAnimation(SCENARIO);
+		RESET = false;
+	}
+	animationMainloop();
+	if (DRAGGING) {
+		displayArrow();
+	}
+};
+
 processing.mousePressed = function () {
 	PRESSPOINT = new processing.PVector(processing.mouseX,processing.mouseY);
+	DRAGGING = true;
 };
 
 processing.mouseReleased = function () {
 	//createStar();
 	createComet();
+	DRAGGING = false;
 };
 
-setupAnimation();
+setupAnimation(SCENARIO);
 }
 var canvas = document.getElementById("canvas1");
 var p = new Processing(canvas, sketchProc);
