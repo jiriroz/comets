@@ -174,7 +174,7 @@ var Tail = function () {
 };
 
 Tail.prototype.addDust = function (x,y,opacity) {
-	for (var i=0;i<10/STARS.length;i++) {
+	for (var i=0;i<5/STARS.length;i++) {
 		this.dustArray.push(new DustParticle(x,y,opacity));
 	}
 };
@@ -222,7 +222,7 @@ var createComet = function () {
 	var currentPoint = new processing.PVector(processing.mouseX,processing.mouseY);
 	var velocity = PVector.sub(PRESSPOINT,currentPoint);
 	velocity.div(40);
-	COMETS.push(new Comet(processing.mouseX,processing.mouseY,velocity.x,velocity.y));
+	COMETS.push(new Comet(PRESSPOINT.x,PRESSPOINT.y,velocity.x,velocity.y));
 };
 
 var createStar = function () {
@@ -234,20 +234,27 @@ var createStar = function () {
 
 var displayArrow = function () {
 	var distance = calculateDistance(PRESSPOINT,new processing.PVector(processing.mouseX,processing.mouseY));
-	if (distance > 150) {distance = 150;} //constraining distance
+	var angle = calculateAngle(PRESSPOINT,new processing.PVector(processing.mouseX,processing.mouseY));
+	angle -= Math.PI/4;
+	if (distance > 120) {distance = 120;} //constraining distance
 	var size = (distance / Math.sqrt(2))*1.1;
 	if (size == 0) {size = 1;} //if size is 0 it automatically displays a full scale image
-	var dx = Math.abs(processing.mouseX - PRESSPOINT.x);
-	var dy = Math.abs(processing.mouseY - PRESSPOINT.y);
-	var angle = Math.tan(dy/dx);
-	document.getElementById("print").innerHTML = dy/dx;
-	angle -= Math.PI/4;
 	processing.pushMatrix();
 	processing.translate(PRESSPOINT.x,PRESSPOINT.y);
 	processing.rotate(angle);
 	processing.image(ARROW,0,0,size,size);
 	processing.popMatrix();
 };
+
+var calculateAngle = function (point2,point1) {
+	var angle = 0;
+	var dx = point1.x - point2.x;
+	var dy = point1.y - point2.y;
+	if (dx < 0) {angle -= Math.PI;}
+	angle += Math.atan(dy/dx);
+	return angle;
+};
+
 
 var calculateDistance = function (position1,position2) {
 	var dir = PVector.sub(position2,position1);
