@@ -11,6 +11,8 @@ var DRAGGING = false;
 var PRESSPOINT;
 var STARS,COMETS;
 var VAPORIZING = false; //is comet vaporizing when it gets close to a star?
+var CREATING = false; //custom mode
+var MAIN_ANIMATION = true;
 
 var Particle = function () {
 	this.position = new processing.PVector(0,0);
@@ -262,6 +264,7 @@ var calculateDistance = function (position1,position2) {
 };
 
 var setupAnimation = function (scenario) {
+	CREATING = false;
 	COMETS = [];
 	switch (scenario) {
 		case "0": //one star in the middle
@@ -269,7 +272,6 @@ var setupAnimation = function (scenario) {
 			break;
 		case "1": //binary with two same stars
 			var sideVelocitySmall = Math.random()*0.5 + 1;
-			var sideVelocityBig = 6;
 			STARS = [new Star(WIDTH/2,HEIGHT/2-200,sideVelocitySmall,0,2),new Star(WIDTH/2,HEIGHT/2+200,-sideVelocitySmall,0,2)];
 			break;
 		case "2": //one massive and two dwarf stars
@@ -277,8 +279,18 @@ var setupAnimation = function (scenario) {
 			var sideVelocityBig = 6;
 			STARS = [new Star(WIDTH/2,HEIGHT/2,0,0,8),new Star(WIDTH/2-40,HEIGHT/2-250,sideVelocityBig,-sideVelocitySmall,0.15),new Star(WIDTH/2+30,HEIGHT/2-250,sideVelocityBig,sideVelocitySmall,0.15)];
 			break;
-		default: //one star in the middle (executed after start)
-			STARS = [new Star(WIDTH/2,HEIGHT/2,0,0,2)];
+		case "3":
+			STARS = [];
+			CREATING = true;
+			break;
+		case '4': //massive binary
+			var sideVelocitySmall = Math.random()*0.5 + 2.5;
+			STARS = [new Star(WIDTH/2,HEIGHT/2-200,sideVelocitySmall,0,7),new Star(WIDTH/2,HEIGHT/2+200,-sideVelocitySmall,0,7)];
+			break;
+		default: //binary
+			var sideVelocitySmall = Math.random()*0.5 + 1;
+			STARS = [new Star(WIDTH/2,HEIGHT/2-200,sideVelocitySmall,0,2),new Star(WIDTH/2,HEIGHT/2+200,-sideVelocitySmall,0,2)];
+			break;
 	}
 };
 
@@ -312,9 +324,13 @@ processing.draw = function () {
 		setupAnimation(SCENARIO);
 		RESET = false;
 	}
-	animationMainloop();
+	if (MAIN_ANIMATION) {
+		animationMainloop();
+	}
 	if (DRAGGING) {
 		displayArrow();
+	}
+	if (CREATING) {
 	}
 };
 
@@ -324,8 +340,12 @@ processing.mousePressed = function () {
 };
 
 processing.mouseReleased = function () {
-	//createStar();
-	createComet();
+	if (CREATING) {
+		createStar();
+	}
+	else if (MAIN_ANIMATION) {
+		createComet();
+	}
 	DRAGGING = false;
 };
 
