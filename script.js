@@ -149,7 +149,7 @@ Comet.prototype.checkInStar = function (star) {
 Comet.prototype.determineDustOpacity = function (star) {
 	var distance = calculateDistance(this.position,star.position);
 	var opacity = 200 * (150 / distance);
-	if (opacity > 200) {opacity = 200}
+	if (opacity > 200) {opacity = 200;}
 	return opacity;
 };
 
@@ -279,7 +279,7 @@ var setupAnimation = function (scenario) {
 			var sideVelocityBig = 6;
 			STARS = [new Star(WIDTH/2,HEIGHT/2,0,0,8),new Star(WIDTH/2-40,HEIGHT/2-250,sideVelocityBig,-sideVelocitySmall,0.15),new Star(WIDTH/2+30,HEIGHT/2-250,sideVelocityBig,sideVelocitySmall,0.15)];
 			break;
-		case "3":
+		case "3": //create mode
 			STARS = [];
 			CREATING = true;
 			break;
