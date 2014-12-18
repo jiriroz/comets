@@ -5,6 +5,7 @@ var HEIGHT = 600;
 processing.size(WIDTH,HEIGHT);
 document.getElementById('canvas1').style.width = WIDTH;
 document.getElementById('canvas1').style.height = HEIGHT;
+document.getElementById('select').style.left = WIDTH+10;
 var ARROW = processing.loadImage('arrow.png'); //260x260px
 var G = 1000; //gravitational constant
 var DRAGGING = false;
