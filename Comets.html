@@ -9,13 +9,48 @@ body {
 	width:800;
 	height:600;
 }
+#select {
+	position: absolute;
+	left:1210;
+	top:20;
+}
 
 </style>
 </head>
 <body>
 <p><canvas id="canvas1"style="border:1px solid"></canvas></p>
-<p id='debugField'></p>
+
+<script>
+var RESET=false;
+var SCENARIO;
+var reset = function () {
+	var radios = document.getElementsByName('scenario');
+	for (var i=0;i<radios.length;i++) {
+		if (radios[i].checked) {
+			SCENARIO = radios[i].value;
+			break;
+		}
+	}
+	RESET=true;
+}
+</script>
+<div id="select">
+<input id="0" type="radio" name="scenario" value=0>
+<label for="0">Single star</label><br>
+<input id="1" type="radio" name="scenario" value=1>
+<label for="1">Binary star system</label><br>
+<input id="2" type="radio" name="scenario" value=2>
+<label for="2">Triple star system</label><br>
+<input id="3" type="radio" name="scenario" value=3>
+<label for="3">Custom</label><br>
+<input id="4" type="radio" name="scenario" value=4>
+<label for="4">Massive binary</label><br>
+<button onclick="reset()">Reset</button>
+</div>
+<p id="print"></p>
+
 <script id="script1" type="text/javascript" src='script.js'>
 </script>
+
 </body>
 </html>

@@ -172,7 +172,6 @@ Comet.prototype.isAlive = function () {
 
 var Tail = function () {
 	this.dustArray = [];
-	this.color = processing.color(220,220,220);
 };
 
 Tail.prototype.addDust = function (x,y,opacity) {
@@ -256,7 +255,6 @@ var calculateAngle = function (point2,point1) {
 	angle += Math.atan(dy/dx);
 	return angle;
 };
-
 
 var calculateDistance = function (position1,position2) {
 	var dir = PVector.sub(position2,position1);
