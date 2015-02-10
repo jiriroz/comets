@@ -11,8 +11,6 @@ var G = 1000; //gravitational constant
 var DRAGGING = false;
 var PRESSPOINT;
 var STARS,COMETS;
-var VAPORIZING = false; //is comet vaporizing when it gets close to a star?
-var CREATING = false; //custom mode
 var MAIN_ANIMATION = true;
 
 var Button = function (text,x,y) {
@@ -37,9 +35,9 @@ Button.prototype.display = function () {
 
 };
 
-Button.prototype.checkMouse = function (mX,mY) {
-    if (checkWithin(mX, mY, this.position.x, this.position.y,
-        this.position.x + this.width, this.position.y + this.height)) {
+Button.prototype.checkMouseIn = function (mX,mY) {
+    if (mX > this.position.x && mX < this.position.x + this.width &&
+        my > this.position.y && mY < this.position,y - this.height) {
         return true;
     }
 };
@@ -71,10 +69,12 @@ Particle.prototype.update = function () {
 Particle.prototype.display = function () {
     processing.noStroke();
     processing.fill(this.color,this.opacity);
-    processing.ellipse(this.position.x,this.position.y,this.radius*2,this.radius*2);
+    processing.ellipse(this.position.x,this.position.y,
+                       this.radius*2,this.radius*2);
 };
 
-Particle.prototype.applyForce = function (force) { //force as a pvector
+//force as a PVector
+Particle.prototype.applyForce = function (force) {
     force.div(this.mass);
     this.acceleration.add(force);
 };
@@ -84,7 +84,8 @@ Particle.prototype.calculateAttraction = function (object) {
     var distance = force.mag();
     if (distance < 10) {distance = 10;}
         force.normalize();
-        var strength = (G * this.mass * object.mass) / (distance * distance);
+        var strength = (G * this.mass * object.mass) /
+                       (distance * distance);
         force.mult(strength);
         return force;
 };
@@ -171,16 +172,16 @@ Comet.prototype.update = function (star) {
 };
 
 Comet.prototype.checkOffScreen = function () {
-    if (this.position.x < -100 || this.position.x > WIDTH + 100 || this.position.y < -100 || this.position.y > HEIGHT + 100) {
-        return true;
-    }
-    return false;
+    return (this.position.x < -100 || this.position.x > WIDTH + 100 ||
+        this.position.y < -100 || this.position.y > HEIGHT + 100);
 };
 
 Comet.prototype.checkInStar = function (star) {
     return (calculateDistance(this.position,star.position) < star.radius);
 };
 
+//the closer the comet is to a star, the more opaque
+//its tail is
 Comet.prototype.determineDustOpacity = function (star) {
     var distance = calculateDistance(this.position,star.position);
     var opacity = 200 * (150 / distance);
@@ -197,9 +198,6 @@ Comet.prototype.decreaseMass = function (star) {
 
 Comet.prototype.isAlive = function () {
     if (!this.alive) {
-        return false;
-    }
-    if (this.mass < 0 && VAPORIZING) { //vaporizing turned off
         return false;
     }
     return true;
@@ -227,7 +225,9 @@ Tail.prototype.update = function () {
 var DustParticle = function(x,y,opacity) {
     Particle.call(this);
     this.position = new processing.PVector(x,y);
-    this.velocity = new processing.PVector((Math.random()-0.5)*0.6,(Math.random()-0.5)*0.6);
+    var vx = (Math.random()-0.5) * 0.6;
+    var vy = (Math.random()-0.5) * 0.6;
+    this.velocity = new processing.PVector(vx,vy);
     this.color = processing.color(220,220,220);
     this.opacity = opacity;
     this.radius = 3;
@@ -249,32 +249,47 @@ DustParticle.prototype.update = function () {
 
 
 DustParticle.prototype.checkInvisible = function () {
-    if (this.opacity < 0) {
-        return true;
-    }
+    return (this.opacity < 0);
+};
+
+/////////////////////////
+
+var createObject = function (object) {
+    var currentPoint = getCurrentMouse();
+    var velocity = PVector.sub(PRESSPOINT,currentPoint);
+    velocity.div(40);
+    return new object(PRESSPOINT.x,PRESSPOINT.y,
+                      velocity.x,velocity.y);
 };
 
 var createComet = function () {
-    var currentPoint = new processing.PVector(processing.mouseX,processing.mouseY);
+    var currentPoint = getCurrentMouse();
     var velocity = PVector.sub(PRESSPOINT,currentPoint);
     velocity.div(40);
-    COMETS.push(new Comet(PRESSPOINT.x,PRESSPOINT.y,velocity.x,velocity.y));
+    COMETS.push(new Comet(PRESSPOINT.x,PRESSPOINT.y,
+                              velocity.x,velocity.y));
 };
 
 var createStar = function () {
-    var currentPoint = new processing.PVector(processing.mouseX,processing.mouseY);
+    var currentPoint = new processing.PVector(processing.mouseX,
+                                              processing.mouseY);
     var velocity = PVector.sub(PRESSPOINT,currentPoint);
     velocity.div(40);
     STARS.push(new Star(processing.mouseX,processing.mouseY,velocity.x,velocity.y,1));
 };
 
+/////////////////////////
+
+
 var displayArrow = function () {
-    var distance = calculateDistance(PRESSPOINT,new processing.PVector(processing.mouseX,processing.mouseY));
-    var angle = calculateAngle(PRESSPOINT,new processing.PVector(processing.mouseX,processing.mouseY));
+    var distance = calculateDistance(PRESSPOINT,getCurrentMouse());
+    var angle = calculateAngle(PRESSPOINT,getCurrentMouse());
     angle -= Math.PI/4;
-    if (distance > 120) {distance = 120;} //constraining distance
+    //constraining distance
+    if (distance > 120) {distance = 120;}
     var size = (distance / Math.sqrt(2))*1.1;
-    if (size == 0) {size = 1;} //if size is 0 it automatically displays a full scale image
+    //if size is 0 it automatically displays a full scale image
+    if (size == 0) {size = 1;}
     processing.pushMatrix();
     processing.translate(PRESSPOINT.x,PRESSPOINT.y);
     processing.rotate(angle);
@@ -327,43 +342,81 @@ var setupAnimation = function (scenario) {
     }
 };
 
-var animationMainloop = function () {
+var Animation = function () {
+    this.stars = [];
+    this.comets = [];
+};
+
+Animation.prototype.setup = function (scenario) {
+    CREATING = false;
+    this.comets = [];
+    switch (scenario) {
+        case "0": //one star in the middle
+            this.stars = [new Star(WIDTH/2,HEIGHT/2,0,0,2)];
+            break;
+        case "1": //binary with two same stars
+            var sideVelocitySmall = Math.random()*0.5 + 1;
+            STARS = [new Star(WIDTH/2,HEIGHT/2-200,sideVelocitySmall,0,2),new Star(WIDTH/2,HEIGHT/2+200,-sideVelocitySmall,0,2)];
+            break;
+        case "2": //one massive and two dwarf stars
+            var sideVelocitySmall = Math.random()*0.5 + 1;
+            var sideVelocityBig = 6;
+            this.stars = [new Star(WIDTH/2,HEIGHT/2,0,0,8),new Star(WIDTH/2-40,HEIGHT/2-250,sideVelocityBig,-sideVelocitySmall,0.15),new Star(WIDTH/2+30,HEIGHT/2-250,sideVelocityBig,sideVelocitySmall,0.15)];
+            break;
+        case "3": //create mode
+            this.stars = [];
+            CREATING = true;
+            break;
+        case '4': //massive binary
+            var sideVelocitySmall = Math.random()*0.5 + 2.5;
+            this.stars = [new Star(WIDTH/2,HEIGHT/2-200,sideVelocitySmall,0,7),new Star(WIDTH/2,HEIGHT/2+200,-sideVelocitySmall,0,7)];
+            break;
+        default: //binary
+            var sideVelocitySmall = Math.random()*0.5 + 1;
+            this.stars = [new Star(WIDTH/2,HEIGHT/2-200,sideVelocitySmall,0,2),new Star(WIDTH/2,HEIGHT/2+200,-sideVelocitySmall,0,2)];
+            break;
+    }
+};
+
+Animation.prototype.mainloop = function () {
     processing.background(18,24,64);
-    for (var i=0; i<COMETS.length;i++) {
-        for (var j=0; j<STARS.length; j++) {
-            COMETS[i].runCometAndTail(STARS[j]);
+    for (var i=0; i<this.comets.length;i++) {
+        for (var j=0; j<this.stars.length; j++) {
+            this.comets[i].runCometAndTail(this.stars[j]);
         }
     }
-    for (var i=0; i<STARS.length; i++) {
-        for (var j=0; j<STARS.length; j++) {
+    for (var i=0; i<this.stars.length; i++) {
+        for (var j=0; j<this.stars.length; j++) {
             if (j!=i) {
-                var gravity = STARS[i].calculateAttraction(STARS[j]);
-                STARS[i].applyForce(gravity);
-                STARS[i].merge(STARS[j]);
+                var gravity = this.stars[i].calculateAttraction(this.stars[j]);
+                this.stars[i].applyForce(gravity);
+                this.stars[i].merge(this.stars[j]);
             }
         }
-        STARS[i].run();
-        if (!STARS[i].alive) {
-            STARS.splice(i,1);
-            if (i != STARS.length) {
+        this.stars[i].run();
+        if (!this.stars[i].alive) {
+            this.stars.splice(i,1);
+            if (i != this.stars.length) {
                 i--;
             }
         }
     }
 };
 
+var getCurrentMouse = function () {
+    return new processing.PVector(processing.mouseX,processing.mouseY);
+    }
+
 processing.draw = function () {
     if (RESET) {
-        setupAnimation(SCENARIO);
+        ANIMATION.setup(SCENARIO);
         RESET = false;
     }
     if (MAIN_ANIMATION) {
-        animationMainloop();
+        ANIMATION.mainloop();
     }
     if (DRAGGING) {
         displayArrow();
-    }
-    if (CREATING) {
     }
 };
 
@@ -381,8 +434,8 @@ processing.mouseReleased = function () {
     }
     DRAGGING = false;
 };
-
-setupAnimation(SCENARIO);
+var ANIMATION = new Animation();
+ANIMATION.setup(SCENARIO);
 }
 var canvas = document.getElementById("canvas");
 var p = new Processing(canvas, sketchProc);
