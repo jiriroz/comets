@@ -333,7 +333,7 @@ Animation.prototype.displayInstructions = function () {
     processing.textSize(40);
     processing.text("Comet Simulator",270,200);
     processing.textSize(20);
-    processing.text("Drag mouse to create comet",285,300);
+    processing.text("Drag mouse to create comet",287,300);
 };
 
 Animation.prototype.onMouseRelease = function () {
