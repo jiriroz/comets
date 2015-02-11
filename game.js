@@ -280,6 +280,7 @@ var Animation = function () {
     //260x260px
     this.arrowImage = processing.loadImage('arrow.png');
     this.reset = new Button("Reset",20,550);
+    this.showInstructions = true;
 };
 
 Animation.prototype.setup = function () {
@@ -291,6 +292,10 @@ Animation.prototype.setup = function () {
 
 Animation.prototype.mainloop = function () {
     processing.background(18,24,64);
+    if (this.showInstructions) {
+        this.displayInstructions();
+        return;
+    }
     this.reset.run();
     for (var i=0; i<this.comets.length;i++) {
         for (var j=0; j<this.stars.length; j++) {
@@ -318,8 +323,23 @@ Animation.prototype.mainloop = function () {
     }
 };
 
+Animation.prototype.displayInstructions = function () {
+    processing.noStroke();
+    processing.fill(255,255,255,30);
+    processing.rect(0,0,WIDTH,HEIGHT);
+    processing.fill(255,255,0,80);
+    processing.rect(220,120,395,125,20);
+    processing.fill(255,255,255);
+    processing.textSize(40);
+    processing.text("Comet Simulator",270,200);
+    processing.textSize(20);
+    processing.text("Drag mouse to create comet",285,300);
+};
+
 Animation.prototype.onMouseRelease = function () {
-    if (this.reset.checkMouseIn()) {
+    if (this.showInstructions) {
+        this.showInstructions = false;
+    } else if (this.reset.checkMouseIn()) {
         this.setup();
     } else {
         this.createComet();
